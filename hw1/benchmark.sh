@@ -1,14 +1,14 @@
 #!/bin/bash
 SINGLE=1
-MULTI=8
-TRIES=500
+MULTI=4
+TRIES=1000
 
-clang++ -Wall -std=c++11 -DNUMT=$SINGLE -DNUM_TRIES=$TRIES -fopenmp  main.cpp -o project0-single
+g++ -Wall -std=c++11 -O1 -DNUMT=$SINGLE -DNUM_TRIES=$TRIES -fopenmp  main.cpp -o project0-single
 ./project0-single
 read -r savg<results
 echo
 echo
-clang++ -Wall -std=c++11 -DNUMT=$MULTI -DNUM_TRIES=$TRIES -fopenmp  main.cpp -o project0-multi
+g++ -Wall -std=c++11 -O1 -DNUMT=$MULTI -DNUM_TRIES=$TRIES -fopenmp  main.cpp -o project0-multi
 ./project0-multi
 read -r mavg<results
 

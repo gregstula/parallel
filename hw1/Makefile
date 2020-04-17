@@ -1,5 +1,5 @@
 CXX=clang++
-CXXFLAGS=-Wall -std=c++11
+CXXFLAGS=-Wall -O2 -std=c++11
 SRC=main.cpp
 
 

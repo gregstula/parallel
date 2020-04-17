@@ -17,7 +17,7 @@
 #endif
 
 // constant array size
-constexpr int64_t ARR_SIZE = 1048576;
+constexpr int64_t ARR_SIZE = 134217728;
 
 float A[ARR_SIZE];
 float B[ARR_SIZE];
@@ -67,8 +67,8 @@ int main()
     file << average_mega_mults;
     file.close();
 
-    printf( "Peak Performance = %8.2lf MegaMults/Sec\n", max_mega_mults );
-    printf( "Average Performance = %8.2lf MegaMults/Sec\n", average_mega_mults );
+    printf( "Peak Performance = %lf MegaMults/Sec\n", max_mega_mults );
+    printf( "Average Performance = %lf MegaMults/Sec\n", average_mega_mults );
     printf("Total time = %f  Seconds", end_time - start_time);
     return 0;
 }
