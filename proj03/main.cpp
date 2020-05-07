@@ -6,6 +6,7 @@
 // global state int now_year; // 2020 - 2025
 int now_month; // 0 - 11
 int now_year;
+int deers_hunted;
 
 float now_precip; // inches of rain per month
 float now_temp; // temperature this month
@@ -103,12 +104,30 @@ void grain_deer()
     }
 }
 
-// kills dear
+// a hunter kills 1 dear, hunting season on odd number of months only
+// there is 0 to 5 hunters per hunting month;
 void hunter()
 {
+    bool kill;
+    int num_hunters = (int) random_num(1,5);
     while (now_year <= FINAL_YEAR) {
+        if ((now_month + 1) % 2 == 0) {
+            kill = false;
+        }
+        else {
+            kill = true;
+        }
+    // calc
     #pragma omp barrier
+    if (kill) {
+        deers_hunted = num_hunters;
+    }
+    else {
+        deers_hunted = 0;
+    }
+    //assign
     #pragma omp barrier
+    // output
     #pragma omp barrier
     }
     return;
@@ -145,18 +164,22 @@ void watcher()
       #pragma omp barrier
       // assign
         // get the exact month
-        unsigned int month = now_year - FIRST_YEAR * 12 + now_month + 1;
         // convert to temp celcius for graph as recommended in instructions
         float celcius = (5.0 / 9.0) * (now_temp - 32);
 
        // Output all globals
         // csv output
         // month, precip, temp, height, deer, hunters
-        printf("%d,%lf,%lf,%lf,%d\n", month, now_precip, celcius, now_height, now_num_deer);
+        printf("%d,%lf,%lf,%lf,%d\n", now_month, now_precip, celcius, now_height, now_num_deer);
 
         // Update globals
         // wrap around
         now_month++;
+        // account for hunts
+        now_num_deer -= deers_hunted;
+        deers_hunted = 0;
+
+        // wrap around and inc year
         if (now_month == 12) {
             now_month = 0;
             now_year++;
