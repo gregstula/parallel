@@ -7,7 +7,7 @@ original = sys.stdout
 f = open("output.csv", "w")
 # redirect to file
 sys.stdout = f
-print("threads,NUMNODES,average_area,performance")
+print("number of trials,megatrials per second,probability")
 sys.stdout = original
 
 for t in [16*1024, 32*1024, 64*1024, 128*1024, 256*1024, 512*1024, 1000*1024]:

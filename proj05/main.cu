@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
   double secondsTotal = 0.001 * (double)msecTotal;
   double trialsPerSecond = (float)NUMTRIALS / secondsTotal;
   double megaTrialsPerSecond = trialsPerSecond / 1000000.;
-  fprintf(stderr, "Number of Trials = %10d, MegaTrials/Second = %10.4lf\n",
+  fprintf(stdout, "%10d,%10.4lf",
           NUMTRIALS, megaTrialsPerSecond);
 
   // copy result from the device to the host:
@@ -224,7 +224,7 @@ int main(int argc, char *argv[]) {
   }
 
   float probability = 100.f * (float)numHits / (float)NUMTRIALS;
-  fprintf(stderr, "\nProbability = %6.3f %%\n", probability);
+  fprintf(stdout, ",%6.3f\n", probability);
 
   // clean up memory:
   delete[] hXcs;
