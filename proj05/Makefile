@@ -6,5 +6,5 @@ SRC=main.cpp
 all:
 	$(CXX) $(CXXFLAGS) -fopenmp -o project2 $(SRC)
 format:
-	clang-format --verbose --sort-includes -i *.cpp *.hpp
+	clang-format --verbose --sort-includes -i *.cpp *.hpp *.cu
 
