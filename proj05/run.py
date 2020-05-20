@@ -3,7 +3,7 @@ import os
 import sys
 import subprocess
 
-original = sys.stdout
+original = sys.stderr
 f = open("output.csv", "w")
 # redirect to file
 sys.stdout = f
@@ -18,7 +18,7 @@ for t in [16*1024, 32*1024, 64*1024, 128*1024, 256*1024, 512*1024, 1000*1024]:
 				blck)
         os.system(cmd)
         cmd = "./proj05"
-        print(subprocess.run([cmd], stdout=subprocess.PIPE).stdout.decode('utf-8'), end = "")
+        print(subprocess.run([cmd], stderr=subprocess.PIPE).stderr.decode('utf-8'), end = "")
         # restore stdout
         sys.stdout = original
 f.close()
