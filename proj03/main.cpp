@@ -7,6 +7,7 @@
 int now_month; // 0 - 11
 int now_year;
 int deers_hunted;
+int total_months;
 
 float now_precip; // inches of rain per month
 float now_temp; // temperature this month
@@ -43,22 +44,34 @@ float random_num(float low, float high)
     return result;
 }
 
+// uses facilities in <random> to generate uniform random numbers
+int random_num(int low, int high)
+{
+    // C++ ism to keep static variable local to a thread
+    static std::random_device rd; // hardware or software device
+    static std::mt19937 rng(rd()); // seed the mt19927 rng using the device
+    // set the distribution
+    static std::uniform_int_distribution<unsigned int> distribution(low, high);
+    // get the random generated number with the distribution
+    auto result = distribution(rng);
+    return result;
+}
+
+// utility function
 float square(float x)
 {
     return x * x;
 }
 
-void set_temp()
+// formulas from the directions
+// this function updates the state of temp and precip
+void set_temp_and_precip()
 {
     float ang = (30. * (float)now_month + 15.) * (M_PI / 180.);
 
     float temp = AVG_TEMP - AMP_TEMP * cos(ang);
     now_temp = temp + random_num(-RANDOM_TEMP, RANDOM_TEMP);
-}
 
-void set_precip()
-{
-    float ang = (30. * (float)now_month + 15.) * (M_PI / 180.);
     float precip = AVG_PRECIP_PER_MONTH + AMP_PRECIP_PER_MONTH * sin(ang);
     now_precip = precip + random_num(-RANDOM_PRECIP, RANDOM_PRECIP);
     if (now_precip < 0.0) {
@@ -78,10 +91,11 @@ float get_precip_factor()
     return std::exp(-1 * square(now_precip - MIDPRECIP) / 10.0);
 }
 
+// grain deer function
 void grain_deer()
 {
     int delta;
-    while (now_year <= FINAL_YEAR) {
+    while (now_year < FINAL_YEAR) {
         // grain height
         if (now_num_deer > now_height) {
             delta = -1;
@@ -105,12 +119,11 @@ void grain_deer()
 }
 
 // a hunter kills 1 dear, hunting season on odd number of months only
-// there is 0 to 5 hunters per hunting month;
+// there is 0 to 3 hunters per hunting month;
 void hunter()
 {
     bool kill;
-    int num_hunters = (int) random_num(1,5);
-    while (now_year <= FINAL_YEAR) {
+    while (now_year < FINAL_YEAR) {
         if ((now_month + 1) % 2 == 0) {
             kill = false;
         }
@@ -119,11 +132,10 @@ void hunter()
         }
     // calc
     #pragma omp barrier
+    deers_hunted = 0;
     if (kill) {
+        int num_hunters = random_num(0,3);
         deers_hunted = num_hunters;
-    }
-    else {
-        deers_hunted = 0;
     }
     //assign
     #pragma omp barrier
@@ -137,7 +149,7 @@ void grain()
 {
     // Compute height of grain
     float delta;
-    while (now_year <= FINAL_YEAR) {
+    while (now_year < FINAL_YEAR) {
         auto temp_factor = get_temp_factor();
         auto precip_factor = get_precip_factor();
         delta = temp_factor * precip_factor * GRAIN_GROWS_PER_MONTH;
@@ -158,7 +170,7 @@ void grain()
 
 void watcher()
 {
-    while (now_year <= FINAL_YEAR) {
+    while (now_year < FINAL_YEAR) {
       // compute
       #pragma omp barrier
       #pragma omp barrier
@@ -170,7 +182,7 @@ void watcher()
        // Output all globals
         // csv output
         // month, precip, temp, height, deer, hunters
-        printf("%d,%lf,%lf,%lf,%d\n", now_month, now_precip, celcius, now_height, now_num_deer);
+        printf("%d,%lf,%lf,%lf,%d,%d\n", total_months, now_precip, celcius, now_height, now_num_deer, deers_hunted);
 
         // Update globals
         // wrap around
@@ -184,9 +196,9 @@ void watcher()
             now_month = 0;
             now_year++;
         }
-        // update state
-        set_precip();
-        set_temp();
+        total_months++;
+        // set temp and precip
+        set_temp_and_precip();
 
         // output
         #pragma omp barrier
@@ -197,12 +209,16 @@ int main(int argc, char* argv[])
 {
     // Starting state
     now_month = 0;
+    total_months = 1;
     now_year = FIRST_YEAR;
 
     now_num_deer = 1.0;
     now_height = 1.0;
-    set_precip();
-    set_temp();
+    deers_hunted = 0;
+
+    // initialize
+    set_temp_and_precip();
+
     omp_set_num_threads(NUMTHREADS); // same as # sections
     #pragma omp parallel sections
     {

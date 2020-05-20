@@ -1,3 +1,6 @@
 #Project 01#
-Apologies for the delay stilll getting used to the new schedule.
-The XLXS and CVS files are provided a long with a run.py script and executable.
+Apologies for the delay I am still getting used to the new schedule. Please use 2 grace days. 
+
+My alias has recently added through the form it is latetotheparty.
+
+The XLXS and CVS files are provided along with a run.py script, the source and the executable.
