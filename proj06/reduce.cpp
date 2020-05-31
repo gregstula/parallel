@@ -14,7 +14,6 @@
 #include "CL/cl.h"
 #include "CL/cl_platform.h"
 
-
 #ifndef GLOBAL_SIZE
 #define GLOBAL_SIZE 64
 #endif
@@ -38,6 +37,7 @@ main( int argc, char *argv[ ] )
 	// see if we can even open the opencl kernel program
 	// (no point going on if we can't):
 
+
 	FILE *fp;
 #ifdef WIN32
 	errno_t err = fopen_s( &fp, CL_FILE_NAME, "r" );
@@ -50,6 +50,9 @@ main( int argc, char *argv[ ] )
 		fprintf( stderr, "Cannot open OpenCL source file '%s'\n", CL_FILE_NAME );
 		return 1;
 	}
+
+    //open csv to append data to
+    FILE *datafile = fopen(argv[1], "a");
 
 	cl_int status;		// returned status from opencl calls
 				// test against CL_SUCCESS
@@ -72,14 +75,16 @@ main( int argc, char *argv[ ] )
 
 	float *hA = new float[ GLOBAL_SIZE ];
 	float *hB = new float[ GLOBAL_SIZE ];
-	float *hC = new float[ GLOBAL_SIZE ];
-    float *hD = new float[ GLOBAL_SIZE ];
+	float *hC = new float[ NUM_WORK_GROUPS ];
+
+    size_t abSize = GLOBAL_SIZE * sizeof(float);
+    size_t cSize = NUM_WORK_GROUPS *sizeof(float);
 
 	// fill the host memory buffers:
 
 	for( int i = 0; i < GLOBAL_SIZE; i++ )
 	{
-		hA[i] = hB[i] = hC[i] = (float) sqrt(  (double)i  );
+		hA[i] = hB[i] = (float) sqrt(  (double)i  );
 	}
 
 	size_t dataSize = GLOBAL_SIZE * sizeof(float);
@@ -98,35 +103,27 @@ main( int argc, char *argv[ ] )
 
 	// 5. allocate the device memory buffers:
 
-	cl_mem dA = clCreateBuffer( context, CL_MEM_READ_ONLY,  dataSize, NULL, &status );
+	cl_mem dA = clCreateBuffer( context, CL_MEM_READ_ONLY, abSize, NULL, &status );
 	if( status != CL_SUCCESS )
 		fprintf( stderr, "clCreateBuffer failed (1)\n" );
 
-	cl_mem dB = clCreateBuffer( context, CL_MEM_READ_ONLY,  dataSize, NULL, &status );
+	cl_mem dB = clCreateBuffer( context, CL_MEM_READ_ONLY, abSize, NULL, &status );
 	if( status != CL_SUCCESS )
 		fprintf( stderr, "clCreateBuffer failed (2)\n" );
 
-	cl_mem dC = clCreateBuffer( context, CL_MEM_READ_ONLY, dataSize, NULL, &status );
+	cl_mem dC = clCreateBuffer( context, CL_MEM_WRITE_ONLY, cSize, NULL, &status );
 	if( status != CL_SUCCESS )
 		fprintf( stderr, "clCreateBuffer failed (3)\n" );
 
-   	cl_mem dD = clCreateBuffer( context, CL_MEM_WRITE_ONLY, dataSize, NULL, &status );
-	if( status != CL_SUCCESS )
-		fprintf( stderr, "clCreateBuffer failed (4)\n" );
-
 	// 6. enqueue the 3 commands to write the data from the host buffers to the device buffers:
 
-	status = clEnqueueWriteBuffer( cmdQueue, dA, CL_FALSE, 0, dataSize, hA, 0, NULL, NULL );
+	status = clEnqueueWriteBuffer( cmdQueue, dA, CL_FALSE, 0, abSize, hA, 0, NULL, NULL );
 	if( status != CL_SUCCESS )
 		fprintf( stderr, "clEnqueueWriteBuffer failed (1)\n" );
 
-	status = clEnqueueWriteBuffer( cmdQueue, dB, CL_FALSE, 0, dataSize, hB, 0, NULL, NULL );
+	status = clEnqueueWriteBuffer( cmdQueue, dB, CL_FALSE, 0, abSize, hB, 0, NULL, NULL );
 	if( status != CL_SUCCESS )
 		fprintf( stderr, "clEnqueueWriteBuffer failed (2)\n" );
-
-    status = clEnqueueWriteBuffer( cmdQueue, dC, CL_FALSE, 0, dataSize, hC, 0, NULL, NULL );
-	if( status != CL_SUCCESS )
-		fprintf( stderr, "clEnqueueWriteBuffer failed (3)\n" );
 
 	Wait( cmdQueue );
 
@@ -167,7 +164,7 @@ main( int argc, char *argv[ ] )
 
 	// 9. create the kernel object:
 
-	cl_kernel kernel = clCreateKernel( program, "ArrayMult", &status );
+	cl_kernel kernel = clCreateKernel( program, "ArrayMultReduce", &status );
 	if( status != CL_SUCCESS )
 		fprintf( stderr, "clCreateKernel failed\n" );
 
@@ -181,11 +178,11 @@ main( int argc, char *argv[ ] )
 	if( status != CL_SUCCESS )
 		fprintf( stderr, "clSetKernelArg failed (2)\n" );
 
-	status = clSetKernelArg( kernel, 2, sizeof(cl_mem), &dC );
+	status = clSetKernelArg( kernel, 2, (int) LOCAL_SIZE * sizeof(float), NULL );
 	if( status != CL_SUCCESS )
 		fprintf( stderr, "clSetKernelArg failed (3)\n" );
 
-	status = clSetKernelArg( kernel, 3, sizeof(cl_mem), &dD );
+	status = clSetKernelArg( kernel, 3, sizeof(cl_mem), &dC );
 	if( status != CL_SUCCESS )
 		fprintf( stderr, "clSetKernelArg failed (4)\n" );
 
@@ -209,9 +206,14 @@ main( int argc, char *argv[ ] )
 
 	// 12. read the results buffer back from the device to the host:
 
-	status = clEnqueueReadBuffer( cmdQueue, dC, CL_TRUE, 0, dataSize, hC, 0, NULL, NULL );
+	status = clEnqueueReadBuffer( cmdQueue, dC, CL_TRUE, 0, NUM_WORK_GROUPS*sizeof(float), hC, 0, NULL, NULL );
 	if( status != CL_SUCCESS )
 			fprintf( stderr, "clEnqueueReadBuffer failed\n" );
+
+    Wait(cmdQueue);
+    float sum = 0;
+    for(int i = 0; i < NUM_WORK_GROUPS; i++)
+        sum += hC[i];
 
 	// did it work?
 
@@ -227,7 +229,7 @@ main( int argc, char *argv[ ] )
 		}
 	}
 
-    // print for csv redirection
+    //stdout to be redirected by python script
     fprintf(stdout, "%d,%d,%lf\n", LOCAL_SIZE, GLOBAL_SIZE, (double)GLOBAL_SIZE/(time1-time0)/1000000000.);
 
 #ifdef WIN32
