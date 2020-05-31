@@ -15,12 +15,6 @@
 #include "CL/cl_platform.h"
 
 
-//#ifndef NMB
-//#define	NMB			64
-//#endif
-
-//#define GLOBAL_SIZE		NMB*1024*1024
-
 #ifndef GLOBAL_SIZE
 #define GLOBAL_SIZE 64
 #endif
