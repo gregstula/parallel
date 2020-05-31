@@ -15,11 +15,11 @@
 #include "CL/cl_platform.h"
 
 
-//#ifndef NMB
-//#define	NMB			64
-//#endif
+#ifndef NMB
+#define	NMB			64
+#endif
 
-//#define NUM_ELEMENTS		NMB*1024*1024
+#define NUM_ELEMENTS		NMB*1024*1024
 
 #ifndef LOCAL_SIZE
 #define	LOCAL_SIZE		64
@@ -133,7 +133,7 @@ main( int argc, char *argv[ ] )
 	clProgramText[fileSize] = '\0';
 	fclose( fp );
 	if( n != fileSize )
-		fprintf( stderr, "Expected to read %d bytes read from '%s' -- actually read %d.\n", (int)fileSize, CL_FILE_NAME, (int)n );
+		fprintf( stderr, "Expected to read %d bytes read from '%s' -- actually read %d.\n", fileSize, CL_FILE_NAME, n );
 
 	// create the text for the kernel program:
 
@@ -146,7 +146,7 @@ main( int argc, char *argv[ ] )
 
 	// 8. compile and link the kernel code:
 
-	const char *options =  {""};
+	char *options = { "" };
 	status = clBuildProgram( program, 1, &device, options, NULL, NULL );
 	if( status != CL_SUCCESS )
 	{
@@ -216,8 +216,8 @@ main( int argc, char *argv[ ] )
 		}
 	}
 
-	fprintf( stderr, "%8d,%4d,%d\t%lf GigaMultsPerSecond\n",
-		LOCAL_SIZE, NUM_WORK_GROUPS, (double)NUM_ELEMENTS/(time1-time0)/1000000000. );
+	fprintf( stderr, "%d,%d,%d,%lf GigaMultsPerSecond\n",
+		NMB, LOCAL_SIZE, NUM_WORK_GROUPS, (double)NUM_ELEMENTS/(time1-time0)/1000000000. );
 
 #ifdef WIN32
 	Sleep( 2000 );

@@ -15,21 +15,17 @@
 #include "CL/cl_platform.h"
 
 
-//#ifndef NMB
-//#define	NMB			64
-//#endif
-
-//#define GLOBAL_SIZE		NMB*1024*1024
-
-#ifndef GLOBAL_SIZE
-#define GLOBAL_SIZE 64
+#ifndef NMB
+#define	NMB			64
 #endif
+
+#define NUM_ELEMENTS		NMB*1024*1024
 
 #ifndef LOCAL_SIZE
 #define	LOCAL_SIZE		64
 #endif
 
-#define	NUM_WORK_GROUPS		GLOBAL_SIZE/LOCAL_SIZE
+#define	NUM_WORK_GROUPS		NUM_ELEMENTS/LOCAL_SIZE
 
 const char *			CL_FILE_NAME = { "first.cl" };
 const float			TOL = 0.0001f;
@@ -66,7 +62,7 @@ main( int argc, char *argv[ ] )
 	status = clGetPlatformIDs( 1, &platform, NULL );
 	if( status != CL_SUCCESS )
 		fprintf( stderr, "clGetPlatformIDs failed (2)\n" );
-
+	
 	// get the device id:
 
 	cl_device_id device;
@@ -76,19 +72,18 @@ main( int argc, char *argv[ ] )
 
 	// 2. allocate the host memory buffers:
 
-	float *hA = new float[ GLOBAL_SIZE ];
-	float *hB = new float[ GLOBAL_SIZE ];
-	float *hC = new float[ GLOBAL_SIZE ];
-    float *hD = new float[ GLOBAL_SIZE ];
+	float *hA = new float[ NUM_ELEMENTS ];
+	float *hB = new float[ NUM_ELEMENTS ];
+	float *hC = new float[ NUM_ELEMENTS ];
 
 	// fill the host memory buffers:
 
-	for( int i = 0; i < GLOBAL_SIZE; i++ )
+	for( int i = 0; i < NUM_ELEMENTS; i++ )
 	{
-		hA[i] = hB[i] = hC[i] = (float) sqrt(  (double)i  );
+		hA[i] = hB[i] = (float) sqrt(  (double)i  );
 	}
 
-	size_t dataSize = GLOBAL_SIZE * sizeof(float);
+	size_t dataSize = NUM_ELEMENTS * sizeof(float);
 
 	// 3. create an opencl context:
 
@@ -112,15 +107,11 @@ main( int argc, char *argv[ ] )
 	if( status != CL_SUCCESS )
 		fprintf( stderr, "clCreateBuffer failed (2)\n" );
 
-	cl_mem dC = clCreateBuffer( context, CL_MEM_READ_ONLY, dataSize, NULL, &status );
+	cl_mem dC = clCreateBuffer( context, CL_MEM_WRITE_ONLY, dataSize, NULL, &status );
 	if( status != CL_SUCCESS )
 		fprintf( stderr, "clCreateBuffer failed (3)\n" );
 
-   	cl_mem dD = clCreateBuffer( context, CL_MEM_WRITE_ONLY, dataSize, NULL, &status );
-	if( status != CL_SUCCESS )
-		fprintf( stderr, "clCreateBuffer failed (4)\n" );
-
-	// 6. enqueue the 3 commands to write the data from the host buffers to the device buffers:
+	// 6. enqueue the 2 commands to write the data from the host buffers to the device buffers:
 
 	status = clEnqueueWriteBuffer( cmdQueue, dA, CL_FALSE, 0, dataSize, hA, 0, NULL, NULL );
 	if( status != CL_SUCCESS )
@@ -129,10 +120,6 @@ main( int argc, char *argv[ ] )
 	status = clEnqueueWriteBuffer( cmdQueue, dB, CL_FALSE, 0, dataSize, hB, 0, NULL, NULL );
 	if( status != CL_SUCCESS )
 		fprintf( stderr, "clEnqueueWriteBuffer failed (2)\n" );
-
-    status = clEnqueueWriteBuffer( cmdQueue, dC, CL_FALSE, 0, dataSize, hC, 0, NULL, NULL );
-	if( status != CL_SUCCESS )
-		fprintf( stderr, "clEnqueueWriteBuffer failed (3)\n" );
 
 	Wait( cmdQueue );
 
@@ -146,7 +133,7 @@ main( int argc, char *argv[ ] )
 	clProgramText[fileSize] = '\0';
 	fclose( fp );
 	if( n != fileSize )
-		fprintf( stderr, "Expected to read %d bytes read from '%s' -- actually read %d.\n", (int) fileSize, CL_FILE_NAME, (int) n );
+		fprintf( stderr, "Expected to read %d bytes read from '%s' -- actually read %d.\n", fileSize, CL_FILE_NAME, n );
 
 	// create the text for the kernel program:
 
@@ -159,7 +146,7 @@ main( int argc, char *argv[ ] )
 
 	// 8. compile and link the kernel code:
 
-	const char *options = { "" };
+	char *options = { "" };
 	status = clBuildProgram( program, 1, &device, options, NULL, NULL );
 	if( status != CL_SUCCESS )
 	{
@@ -191,14 +178,10 @@ main( int argc, char *argv[ ] )
 	if( status != CL_SUCCESS )
 		fprintf( stderr, "clSetKernelArg failed (3)\n" );
 
-	status = clSetKernelArg( kernel, 3, sizeof(cl_mem), &dD );
-	if( status != CL_SUCCESS )
-		fprintf( stderr, "clSetKernelArg failed (4)\n" );
-
 
 	// 11. enqueue the kernel object for execution:
 
-	size_t globalWorkSize[3] = { GLOBAL_SIZE, 1, 1 };
+	size_t globalWorkSize[3] = { NUM_ELEMENTS, 1, 1 };
 	size_t localWorkSize[3]  = { LOCAL_SIZE,   1, 1 };
 
 	Wait( cmdQueue );
@@ -221,7 +204,7 @@ main( int argc, char *argv[ ] )
 
 	// did it work?
 
-	for( int i = 0; i < GLOBAL_SIZE; i++ )
+	for( int i = 0; i < NUM_ELEMENTS; i++ )
 	{
 		float expected = hA[i] * hB[i];
 		if( fabs( hC[i] - expected ) > TOL )
@@ -233,8 +216,8 @@ main( int argc, char *argv[ ] )
 		}
 	}
 
-    // print for csv redirection
-    fprintf(stdout, "%d,%d,%lf\n", LOCAL_SIZE, GLOBAL_SIZE, (double)GLOBAL_SIZE/(time1-time0)/1000000000.);
+	fprintf( stderr, "%8d\t%4d\t%10d\t%10.3lf GigaMultsPerSecond\n",
+		NMB, LOCAL_SIZE, NUM_WORK_GROUPS, (double)NUM_ELEMENTS/(time1-time0)/1000000000. );
 
 #ifdef WIN32
 	Sleep( 2000 );
